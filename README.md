@@ -32,7 +32,7 @@
 ---
 ## IMPORTANT NOTICE FOR ADVANCED USERS
 
-All relevant listeners and data propagation is generated on build! This means that if you have your own scripts also generating behaviours on build, you may have to modify the [PostProcessScene] value in the NetworkDebuggerBuildCallback.cs file found in the Editor folder!
+All relevant listeners and data propagationa are generated on build! If you have your own scripts also generating behaviours on build, you may have to modify the [PostProcessScene] value in the NetworkDebuggerBuildCallback.cs file found in the Editor folder!
 
 ---
 ![image_004_0000](https://github.com/Centauri2442/VRCNetworkDebugger/assets/28989460/d289e596-5b99-427e-9f7d-29af99791e20)
