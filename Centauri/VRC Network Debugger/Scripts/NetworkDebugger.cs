@@ -30,6 +30,10 @@ namespace Centauri.NetDebug
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class NetworkDebugger : UdonSharpBehaviour
     {
+        [Tooltip("Amount of data the network will process per frame! This can be turned up at the cost of CPU performance!")]
+        public int iterationsPerFrame = 1;
+        public float OcclusionDistance = 10f;
+        [Space]
         [HideInInspector] public NetDebugAttachment[] NetworkedObjects;
         [HideInInspector] public int[] perBehaviourByteCount;
         [HideInInspector] public int[] perBehaviourByteCountTotal;
@@ -49,8 +53,9 @@ namespace Centauri.NetDebug
         [HideInInspector] public NetworkItemUI[] ItemUIs;
         public GameObject NetworkItemUIPrefab;
         public Transform NetworkItemDisplayRoot;
+        public RectTransform ScrollViewRect;
 
-        [HideInInspector] public bool ShowAllItems = true;
+        [HideInInspector] public bool ShowAllItems = false;
         [HideInInspector] public bool ShowRemote = true;
         [HideInInspector] public bool ShowTotal = false;
         private DataDictionary DataDictionaries = new DataDictionary();
@@ -60,13 +65,18 @@ namespace Centauri.NetDebug
         [HideInInspector] public string searchVal;
 
         private VRCPlayerApi _localPlayer;
+        private bool isUpdatingUI;
+        
+        private int dictLength = 0;
+        private DataDictionary tempDict;
+        private int currentIndex = 0;
 
 
         #region Panel Refreshing
 
         private void Start()
         {
-            InitializeDictionaries();
+            SendCustomEventDelayedFrames(nameof(InitializeDictionaries), 25);
 
             for (int i = 0; i < NetworkedObjects.Length; i++)
             {
@@ -74,8 +84,19 @@ namespace Centauri.NetDebug
             }
 
             _localPlayer = Networking.GetOwner(gameObject);
-            
-            Refresh();
+
+            if (NetworkedObjects.Length > 100)
+            {
+                iterationsPerFrame = 1;
+            }
+            else if (NetworkedObjects.Length > 50)
+            {
+                iterationsPerFrame = 2;
+            }
+            else
+            {
+                iterationsPerFrame = 4;
+            }
         }
 
         public void Refresh()
@@ -98,15 +119,25 @@ namespace Centauri.NetDebug
                 }
             }
             
-            MasterText.text = Networking.GetOwner(gameObject).displayName;
-            
             UpdateDictionaries();
-            
-            SortDictionaries();
-            
-            UpdateUI();
-            
             ResetArrays();
+
+            if (Vector3.Distance(_localPlayer.GetPosition(), transform.position) > OcclusionDistance)
+            {
+                NetworkItemDisplayRoot.gameObject.SetActive(false);
+                return;
+            }
+            else
+            {
+                NetworkItemDisplayRoot.gameObject.SetActive(true);
+            }
+            
+            MasterText.text = Networking.GetOwner(gameObject).displayName;
+
+            if (isUpdatingUI) return;
+            isUpdatingUI = true;
+            
+            SendCustomEventDelayedFrames(nameof(SortDictionaries), 1, EventTiming.LateUpdate);
         }
         
         public void ResetArrays()
@@ -116,7 +147,6 @@ namespace Centauri.NetDebug
                 perBehaviourByteCount[i] = 0;
             }
         }
-
         public void UpdateUI()
         {
             KBytesOut.text = BytesToKilobytes(bytesLastSecond).ToString();
@@ -130,10 +160,40 @@ namespace Centauri.NetDebug
                 }
             }
 
-            for (int i = 0; i < NetworkedObjects.Length; i++)
-            {
-                var dictionary = DataDictionaries[i].DataDictionary;
+            currentIndex = 0;
+            dictLength = NetworkedObjects.Length;
+            BufferedUpdateUI();
+        }
 
+        public void BufferedUpdateUI()
+        {
+            for (int iter = 0; iter < iterationsPerFrame; iter++)
+            {
+                if (currentIndex <= dictLength)
+                {
+                    for (int i = 0; i < dictLength - currentIndex; i++)
+                    {
+                        UpdateNetworkItem(i);
+                    }
+
+                    currentIndex++;
+                }
+                else
+                {
+                    isUpdatingUI = false;
+                    return;
+                }
+            }
+            
+            SendCustomEventDelayedFrames(nameof(BufferedUpdateUI), 1, EventTiming.LateUpdate);
+        }
+
+        public void UpdateNetworkItem(int i)
+        {
+            if (DataDictionaries.TryGetValue(i, out DataToken token))
+            {
+                var dictionary = token.DataDictionary;
+                    
                 if (dictionary.TryGetValue("ntwrkItm", out DataToken item))
                 {
                     if (Networking.IsOwner(((NetDebugAttachment)item.Reference).gameObject))
@@ -142,31 +202,39 @@ namespace Centauri.NetDebug
                         {
                             if (dictionary.TryGetValue("ui", out DataToken ui) && dictionary.TryGetValue("byte", out DataToken bytes))
                             {
-                                ((NetworkItemUI)ui.Reference).gameObject.SetActive((int)bytes > 0);
+                                ((NetworkItemUI)ui.Reference).gameObject.SetActive((int)bytes > 0 && ((NetworkItemUI)ui.Reference).searchVisible);
+                                ((NetworkItemUI)ui.Reference).IsVisibleInScrollView(ScrollViewRect);
                             }
                         }
                         else
                         {
                             if (dictionary.TryGetValue("ui", out DataToken ui))
                             {
-                                ((NetworkItemUI)ui.Reference).gameObject.SetActive(true);
+                                ((NetworkItemUI)ui.Reference).gameObject.SetActive(((NetworkItemUI)ui.Reference).searchVisible);
+                                ((NetworkItemUI)ui.Reference).IsVisibleInScrollView(ScrollViewRect);
                             }
                         }
 
-                        if (!ShowTotal)
+                        if (dictionary.TryGetValue("ui", out DataToken val))
                         {
-                            if (dictionary.TryGetValue("byte", out DataToken value))
+                            if (((NetworkItemUI)val.Reference).isVisible)
                             {
-                                ItemUIs[i].UpdateBytesOut(value.Int);
-                                ItemUIs[i].UpdateOwner(true);
-                            }
-                        }
-                        else
-                        {
-                            if (dictionary.TryGetValue("totalByte", out DataToken value))
-                            {
-                                ItemUIs[i].UpdateTotalBytes(value.Int);
-                                ItemUIs[i].UpdateOwner(true);
+                                if (!ShowTotal)
+                                {
+                                    if (dictionary.TryGetValue("byte", out DataToken value))
+                                    {
+                                        ItemUIs[i].UpdateBytesOut(value.Int);
+                                        ItemUIs[i].UpdateOwner(true);
+                                    }
+                                }
+                                else
+                                {
+                                    if (dictionary.TryGetValue("totalByte", out DataToken value))
+                                    {
+                                        ItemUIs[i].UpdateTotalBytes(value.Int);
+                                        ItemUIs[i].UpdateOwner(true);
+                                    }
+                                }
                             }
                         }
                     }
@@ -174,24 +242,19 @@ namespace Centauri.NetDebug
                     {
                         if (dictionary.TryGetValue("ui", out DataToken ui))
                         {
-                            if (!ShowRemote)
-                            {
-                                ((NetworkItemUI)ui.Reference).gameObject.SetActive(false);
-                            }
-                            else
-                            {
-                                ((NetworkItemUI)ui.Reference).UpdateOwner(false);
-                            }
-                        }
-                    }
+                            ((NetworkItemUI)ui.Reference).IsVisibleInScrollView(ScrollViewRect);
 
-                    if (searchVal.Length > 0) // After setting active states based off of our settings, we then will sort it further using the search bar!
-                    {
-                        if (dictionary.TryGetValue("ui", out DataToken ui))
-                        {
-                            if (((NetworkItemUI)ui.Reference).gameObject.activeSelf)
+                            if (((NetworkItemUI)ui.Reference).isVisible)
                             {
-                                ((NetworkItemUI)ui.Reference).gameObject.SetActive(((NetDebugAttachment)item.Reference).gameObject.gameObject.name.Contains(searchVal)); // Set UI active state based off of target behaviour gameObject name
+                                if (!ShowRemote)
+                                {
+                                    ((NetworkItemUI)ui.Reference).gameObject.SetActive(false);
+                                }
+                                else
+                                {
+                                    ((NetworkItemUI)ui.Reference).gameObject.SetActive(((NetworkItemUI)ui.Reference).searchVisible);
+                                    ((NetworkItemUI)ui.Reference).UpdateOwner(false);
+                                }
                             }
                         }
                     }
@@ -217,35 +280,53 @@ namespace Centauri.NetDebug
 
                 sortedDictionaries = sortedDictionaries.Add(debugItem);
             }
+            
+            SendCustomEventDelayedSeconds(nameof(Refresh), 1f, EventTiming.LateUpdate); // We make sure the dictionaries are created before beginning the panel refresh!
         }
 
         public void UpdateDictionaries()
         {
             for (int i = 0; i < NetworkedObjects.Length; i++)
             {
-                DataDictionaries[i].DataDictionary["byte"] = perBehaviourByteCount[i];
-                DataDictionaries[i].DataDictionary["totalByte"] = perBehaviourByteCountTotal[i];
-            }
-        }
-
-        public void SortDictionaries()
-        {
-            int length = sortedDictionaries.Length;
-            DataDictionary temp = new DataDictionary();
-
-            for (int j = 0; j < length - 1; j++)
-            {
-                for (int i = 0; i < length - j - 1; i++)
+                if(DataDictionaries.TryGetValue(i, out DataToken dictionary))
                 {
-                    if (sortedDictionaries[i]["byte"].Int < sortedDictionaries[i + 1]["byte"].Int)
-                    {
-                        // Swap the elements
-                        temp = sortedDictionaries[i + 1];
-                        sortedDictionaries[i + 1] = sortedDictionaries[i];
-                        sortedDictionaries[i] = temp;
-                    }
+                    dictionary.DataDictionary["byte"] = perBehaviourByteCount[i];
+                    dictionary.DataDictionary["totalByte"] = perBehaviourByteCountTotal[i];
                 }
             }
+        }
+        
+        public void SortDictionaries()
+        {
+            dictLength = sortedDictionaries.Length;
+            tempDict = new DataDictionary();
+
+            for (int iter = 0; iter < iterationsPerFrame; iter++)
+            {
+                if (currentIndex < dictLength - 1)
+                {
+                    for (int i = 0; i < dictLength - currentIndex - 1; i++)
+                    {
+                        if (sortedDictionaries[i]["byte"].Int < sortedDictionaries[i + 1]["byte"].Int)
+                        {
+                            // Swap the elements
+                            tempDict = sortedDictionaries[i + 1];
+                            sortedDictionaries[i + 1] = sortedDictionaries[i];
+                            sortedDictionaries[i] = tempDict;
+                        }
+
+                        currentIndex++;
+                    }
+                }
+                else
+                {
+                    currentIndex = 0;
+                    SendCustomEventDelayedFrames(nameof(UpdateUI), 1, EventTiming.LateUpdate);
+                    return;
+                }
+            }
+            
+            SendCustomEventDelayedFrames(nameof(SortDictionaries), 1, EventTiming.LateUpdate);
         }
 
         #endregion
@@ -255,8 +336,33 @@ namespace Centauri.NetDebug
         public void SearchUpdate()
         {
             searchVal = SearchBar.text;
-            
-            UpdateUI();
+            bool isSearching = searchVal.Length > 0;
+
+            for (int i = 0; i < NetworkedObjects.Length; i++)
+            {
+                if (DataDictionaries.TryGetValue(i, out DataToken token))
+                {
+                    var dictionary = token.DataDictionary;
+                    
+                    if (dictionary.TryGetValue("ntwrkItm", out DataToken item))
+                    {
+                        if (isSearching)
+                        {
+                            if (dictionary.TryGetValue("ui", out DataToken ui))
+                            {
+                                ((NetworkItemUI)ui.Reference).searchVisible = ((NetDebugAttachment)item.Reference).gameObject.name.Contains(searchVal); // Set UI active state based off of target behaviour gameObject name
+                            }
+                        }
+                        else
+                        {
+                            if (dictionary.TryGetValue("ui", out DataToken ui))
+                            {
+                                ((NetworkItemUI)ui.Reference).searchVisible = true;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         public void ToggleShowAllItems()
@@ -274,8 +380,6 @@ namespace Centauri.NetDebug
                     ItemUIs[i].gameObject.SetActive(true);
                 }
             }
-            
-            UpdateUI();
         }
 
         public void ToggleShowTotalBytes()
@@ -286,8 +390,6 @@ namespace Centauri.NetDebug
             {
                 ItemUIs[i].ShowTotal(ShowTotal);
             }
-            
-            UpdateUI();
         }
 
         public void ToggleShowRemote()

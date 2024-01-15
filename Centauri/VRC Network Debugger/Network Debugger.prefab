@@ -437,7 +437,7 @@ MonoBehaviour:
           m_StringArgument: ToggleShowAllItems
           m_BoolArgument: 0
         m_CallState: 2
-  m_IsOn: 1
+  m_IsOn: 0
 --- !u!1 &220851023960288133
 GameObject:
   m_ObjectHideFlags: 0
@@ -4616,11 +4616,13 @@ MonoBehaviour:
   NetworkItemUIPrefab: {fileID: 4144880822328232830, guid: 7bf9ea814111d2d40967cec820cda78f,
     type: 3}
   NetworkItemDisplayRoot: {fileID: 220851024426077330}
-  ShowAllItems: 1
+  ScrollViewRect: {fileID: 220851024840854426}
+  ShowAllItems: 0
   ShowRemote: 1
   ShowTotal: 0
   SearchBar: {fileID: 220851025531840093}
   searchVal: 
+  iterationsPerFrame: 1
 --- !u!114 &220851025700611183
 MonoBehaviour:
   m_ObjectHideFlags: 0

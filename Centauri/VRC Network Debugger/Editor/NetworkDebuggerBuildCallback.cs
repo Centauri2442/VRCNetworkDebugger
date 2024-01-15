@@ -35,8 +35,21 @@ namespace Centauri.NetDebug
 
             debugger.NetworkedObjects = new NetDebugAttachment[0];
 
-            var behaviours = FindObjectsOfType<UdonBehaviour>();
+            var allBehaviours = FindObjectsOfType<UdonBehaviour>();
+            HashSet<GameObject> uniqueGameObjects = new HashSet<GameObject>();
+            List<UdonBehaviour> uniqueScripts = new List<UdonBehaviour>();
 
+            foreach (var script in allBehaviours)
+            {
+                if (uniqueGameObjects.Add(script.gameObject))
+                {
+                    // This GameObject was not already in the HashSet, so add the script to the list
+                    uniqueScripts.Add(script);
+                }
+            }
+
+            var behaviours = uniqueScripts.ToArray();
+            
             int counter = 0;
             while (debugger.NetworkItemDisplayRoot.childCount > 0 && counter < 100) // Destroy existing children
             {

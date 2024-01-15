@@ -3,20 +3,6 @@ INFO -------------------------------------------------------------
 The VRC Network Debugger is a easy to use tool designed for network testing in VRChat!
 All needed listeners and data propagation happens on build, so there is almost no setup required!
 
-Features -------------------------------------------------------------
-
-- Master Display
-- Total KBytes sent out per second for all owned objects
-- Network Clogged State
-- 20 Latest network serializations sent out
-- Full List of networked objects
-  - Sorts by highest bytes per second
-  - Networked object search function
-  - Can show both BPS and total bytes sent over entire session
-  - Shows time since last serialization for both local and remote users
-  - Can toggle between showing object and owner name for remote objects
-  - Shows send and receive time of network data sent from remote objects
-
 SETUP -------------------------------------------------------------
 
 1) Import dependencies

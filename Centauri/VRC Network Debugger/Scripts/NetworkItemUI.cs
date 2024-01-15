@@ -27,6 +27,8 @@ namespace Centauri.NetDebug
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class NetworkItemUI : UdonSharpBehaviour
     {
+        public RectTransform UIRect;
+        public GameObject HiderObject;
         public GameObject RemoteOnly;
         public GameObject OwnerOnly;
 
@@ -48,25 +50,38 @@ namespace Centauri.NetDebug
         public TextMeshProUGUI receiveTimeText;
 
         private float timeSinceSync;
+        public bool isVisible;
+        public bool searchVisible = true;
+
+        private float disabledTime;
+
 
         private void Start()
         {
-            SendCustomEventDelayedFrames(nameof(UpdateTime), 1);
+            disabledTime = Time.realtimeSinceStartup;
         }
 
-        public void UpdateTime()
+        public void Update()
         {
-            SendCustomEventDelayedFrames(nameof(UpdateTime), 1);
-            
             timeSinceSync += Time.deltaTime;
 
-            if (!gameObject.activeInHierarchy) return;
+            if (!gameObject.activeInHierarchy || !isVisible) return;
 
             Name.text = showOwner ? ownerName : objectName;
             
             SerializationFailed.color = Color.Lerp(SerializationFailed.color, HiddenColor, Time.deltaTime);
             
             TimeSinceLastSerialization.text = timeSinceSync.ToString();
+        }
+
+        public void OnDisable()
+        {
+            disabledTime = Time.realtimeSinceStartup;
+        }
+
+        public void OnEnable()
+        {
+            timeSinceSync += Time.realtimeSinceStartup - disabledTime;
         }
 
         public void ToggleShowOwner()
@@ -118,6 +133,17 @@ namespace Centauri.NetDebug
         public void DataFailed()
         {
             SerializationFailed.color = FailedColor;
+        }
+        
+        public void IsVisibleInScrollView(RectTransform viewportRect)
+        {
+            // Convert the target's position to the viewport's space
+            Vector3 targetPosInViewport = viewportRect.InverseTransformPoint(UIRect.position);
+
+            // Check if the target is within the viewport's bounds
+            isVisible = viewportRect.rect.Contains(targetPosInViewport);
+            
+            HiderObject.SetActive(isVisible);
         }
     }
 }
