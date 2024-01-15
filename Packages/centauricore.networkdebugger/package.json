@@ -5,7 +5,7 @@
   "description": "VRC Networking Debuggin!",
   "gitDependencies": {},
   "vpmDependencies": {
-    "com.vrchat.worlds": "3.5.0"
+    "com.vrchat.worlds": "^3.4"
   },
   "author": {
     "name": "Centauri",
@@ -14,8 +14,5 @@
   "legacyFolders": {},
   "legacyFiles": {},
   "localPath": "D:\\Unity\\Projects\\Network Debugger\\Packages\\centauricore.networkdebugger",
-  "unity": "2019.4",
-  "dependencies": {
-    "com.vrchat.worlds": "3.4.0"
-  }
+  "unity": "2019.4"
 }
