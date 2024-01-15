@@ -1,12 +1,14 @@
 {
     "name": "centauricore.networkdebugger.Editor",
     "references": [
-        "centauricore.networkdebugger",
         "UdonSharp.Runtime",
-        "UdonSharp.Editor",
-        "VRC.Udon"
+        "VRC.Udon",
+        "centauricore.networkdebugger",
+        "UdonSharp.Editor"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
