@@ -13,6 +13,7 @@
   - Shows time since last serialization for both local and remote users
   - Can toggle between showing object and owner name for remote objects
   - Shows send and receive time of network data sent from remote objects
+  - Shows when a serialization has failed
 ---
 ## Setup
 
