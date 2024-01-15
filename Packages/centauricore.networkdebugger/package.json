@@ -1,0 +1,21 @@
+{
+  "name": "centauricore.networkdebugger",
+  "displayName": "CentauriCore - VRC Network Debugger",
+  "version": "0.0.1",
+  "description": "An alternative to the broken VRChat networking panels, VRC Network Debugger allows developers to quickly and easily see network usage and other relevant info about the networked udon behaviours in their world!",
+  "gitDependencies": {},
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.5.0"
+  },
+  "author": {
+    "name": "Centauri",
+    "email": "centauri2442@gmail.com"
+  },
+  "legacyFolders": {},
+  "legacyFiles": {},
+  "localPath": "D:\\Unity\\Projects\\Network Debugger\\Packages\\centauricore.networkdebugger",
+  "unity": "2019.4",
+  "dependencies": {
+    "com.vrchat.worlds": "3.4.0"
+  }
+}
