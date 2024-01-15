@@ -19,6 +19,9 @@
 1) Import dependencies
 2) Import latest VRCNetworkDebugger Unitypackage
 3) Drag and drop the "Network Debugger" prefab into your scene (Make sure to only have 1!)
+---
+## Limitations
+- Due to performance limitations, it is highly recommended to remove the prefab from the scene when not actively doing network testing! It is also not recommended to turn up the iterations per frame inside the debugger.
 
 ---
 ## Requirements
