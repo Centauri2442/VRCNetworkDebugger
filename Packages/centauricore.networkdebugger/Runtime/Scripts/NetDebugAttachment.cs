@@ -27,21 +27,42 @@ namespace Centauri.NetDebug
     {
         public NetworkDebugger Debugger;
         public int debugIndex;
+        public int MaxHeaders;
+        public bool hasArrsOrStrings;
+        public string[] allDataTypes;
 
+        private bool justFiredPostSerialization;
 
         public void InitializeScript()
         {
             Debugger.UpdateUIOwner(debugIndex, Networking.GetOwner(gameObject).displayName);
         }
 
+        
         public override void OnPostSerialization(SerializationResult result)
         {
+            if (justFiredPostSerialization)
+            {
+                Debug.LogError("<color=red>Serialization fired twice on debug attachment!</color>");
+                return;
+            }
+            justFiredPostSerialization = true;
+            
+            SendCustomEventDelayedFrames(nameof(ResetSerialization), 2);
+            
             Debugger.AddBytes(debugIndex, result.byteCount);
+            
+            Debugger.ItemUIs[debugIndex].timeSinceSync = 0f;
 
             if (!result.success)
             {
                 Debugger.SerializationFailed(debugIndex);
             }
+        }
+
+        public void ResetSerialization()
+        {
+            justFiredPostSerialization = false;
         }
 
         public override void OnOwnershipTransferred(VRCPlayerApi player)
@@ -54,6 +75,7 @@ namespace Centauri.NetDebug
             if (!Debugger.ShowRemote) return;
             
             Debugger.AddResultData(debugIndex, result.sendTime, result.receiveTime);
+            
         }
     }
 }

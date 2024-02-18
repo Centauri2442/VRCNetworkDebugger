@@ -1,10 +1,10 @@
 {
-    "name": "centauricore.networkdebugger",
+    "name": "centauricore.networkdebugger.samples",
     "references": [
         "UdonSharp.Runtime",
         "VRC.Udon",
         "Unity.TextMeshPro",
-        "VRC.Udon.Serialization.OdinSerializer"
+        "centauricore.networkdebugger"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

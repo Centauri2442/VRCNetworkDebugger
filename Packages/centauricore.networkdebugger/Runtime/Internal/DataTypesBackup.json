@@ -1,0 +1,202 @@
+{
+  "%SystemBoolean,": {
+    "maxByte": 2,
+    "minByte": 2,
+    "variableType": "Bool"
+  },
+  "%SystemChar,": {
+    "maxByte": 2,
+    "minByte": 2,
+    "variableType": "Char"
+  },
+  "%SystemByte,": {
+    "maxByte": 2,
+    "minByte": 2,
+    "variableType": "Byte"
+  },
+  "%SystemSByte,": {
+    "maxByte": 2,
+    "minByte": 2,
+    "variableType": "UByte"
+  },
+  "%SystemInt16,": {
+    "maxByte": 4,
+    "minByte": 2,
+    "variableType": "Short"
+  },
+  "%SystemUInt16,": {
+    "maxByte": 4,
+    "minByte": 2,
+    "variableType": "UShort"
+  },
+  "%SystemInt32,": {
+    "maxByte": 8,
+    "minByte": 4,
+    "variableType": "Int"
+  },
+  "%SystemUInt32,": {
+    "maxByte": 8,
+    "minByte": 4,
+    "variableType": "UInt"
+  },
+  "%SystemInt64,": {
+    "maxByte": 12,
+    "minByte": 8,
+    "variableType": "Long"
+  },
+  "%SystemUInt64,": {
+    "maxByte": 12,
+    "minByte": 8,
+    "variableType": "ULong"
+  },
+  "%SystemSingle,": {
+    "maxByte": 8,
+    "minByte": 4,
+    "variableType": "Float"
+  },
+  "%SystemDouble,": {
+    "maxByte": 12,
+    "minByte": 8,
+    "variableType": "Double"
+  },
+  "%UnityEngineVector2,": {
+    "maxByte": 12,
+    "minByte": 8,
+    "variableType": "Vector2"
+  },
+  "%UnityEngineVector3,": {
+    "maxByte": 16,
+    "minByte": 12,
+    "variableType": "Vector3"
+  },
+  "%UnityEngineVector4,": {
+    "maxByte": 20,
+    "minByte": 16,
+    "variableType": "Vector4"
+  },
+  "%UnityEngineQuaternion,": {
+    "maxByte": 20,
+    "minByte": 16,
+    "variableType": "Quaternion"
+  },
+  "%SystemString,": {
+    "maxByte": 68,
+    "minByte": 68,
+    "variableType": "String"
+  },
+  "%VRCSDKBaseVRCUrl,": {
+    "maxByte": 68,
+    "minByte": 68,
+    "variableType": "VRCUrl"
+  },
+  "%UnityEngineColor,": {
+    "maxByte": 20,
+    "minByte": 16,
+    "variableType": "Color"
+  },
+  "%UnityEngineColor32,": {
+    "maxByte": 5,
+    "minByte": 5,
+    "variableType": "Color32"
+  },
+  "%SystemBooleanArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "BooleanArray"
+  },
+  "%SystemCharArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "CharArray"
+  },
+  "%SystemByteArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "ByteArray"
+  },
+  "%SystemSByteArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "UByteArray"
+  },
+  "%SystemInt16Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "ShortArray"
+  },
+  "%SystemUInt16Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "UShortArray"
+  },
+  "%SystemInt32Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "IntArray"
+  },
+  "%SystemUInt32Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "UIntArray"
+  },
+  "%SystemInt64Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "LongArray"
+  },
+  "%SystemUInt64Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "ULongArray"
+  },
+  "%SystemSingleArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "FloatArray"
+  },
+  "%SystemDoubleArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "DoubleArray"
+  },
+  "%UnityEngineVector2Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "Vector2Array"
+  },
+  "%UnityEngineVector3Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "Vector3Array"
+  },
+  "%UnityEngineVector4Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "Vector4Array"
+  },
+  "%UnityEngineQuaternionArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "QuaternionArray"
+  },
+  "%SystemStringArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "StringArray"
+  },
+  "%VRCSDKBaseVRCUrlArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "VRCUrlArray"
+  },
+  "%UnityEngineColorArray,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "ColorArray"
+  },
+  "%UnityEngineColor32Array,": {
+    "maxByte": 64,
+    "minByte": 64,
+    "variableType": "Color32Array"
+  }
+}

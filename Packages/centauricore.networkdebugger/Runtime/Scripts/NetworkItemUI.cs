@@ -27,6 +27,8 @@ namespace Centauri.NetDebug
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class NetworkItemUI : UdonSharpBehaviour
     {
+        public NetworkDebugger NetworkDebugger;
+        
         public RectTransform UIRect;
         public GameObject HiderObject;
         public GameObject RemoteOnly;
@@ -41,7 +43,6 @@ namespace Centauri.NetDebug
         public string ownerName;
         public TextMeshProUGUI BytesOut;
         public TextMeshProUGUI TotalBytes;
-        public TextMeshProUGUI TimeSinceLastSerialization;
         public Image SerializationFailed;
         public Color FailedColor;
         public Color HiddenColor;
@@ -49,9 +50,17 @@ namespace Centauri.NetDebug
         public TextMeshProUGUI sendTimeText;
         public TextMeshProUGUI receiveTimeText;
 
-        private float timeSinceSync;
+        public float timeSinceSync;
         public bool isVisible;
         public bool searchVisible = true;
+
+        public int headersLastSecond;
+
+        public int minBytes;
+        public int maxBytes;
+        public bool hasArrsOrStr = false;
+
+        public int debugIndex;
 
         private float disabledTime;
 
@@ -70,8 +79,6 @@ namespace Centauri.NetDebug
             Name.text = showOwner ? ownerName : objectName;
             
             SerializationFailed.color = Color.Lerp(SerializationFailed.color, HiddenColor, Time.deltaTime);
-            
-            TimeSinceLastSerialization.text = timeSinceSync.ToString();
         }
 
         public void OnDisable()
@@ -89,6 +96,11 @@ namespace Centauri.NetDebug
             showOwner = !showOwner;
             
             Name.text = showOwner ? ownerName : objectName;
+        }
+
+        public void ToggleShowDetails()
+        {
+            NetworkDebugger.SetDetailPanel(this);
         }
 
         public void UpdateBytesOut(int bytes)

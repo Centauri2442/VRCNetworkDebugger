@@ -27,22 +27,40 @@ using VRC.Udon.Common.Enums;
 
 namespace Centauri.NetDebug
 {
-    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+    [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class NetworkDebugger : UdonSharpBehaviour
     {
         [Tooltip("Amount of data the network will process per frame! This can be turned up at the cost of CPU performance!")]
         public int iterationsPerFrame = 1;
         public float OcclusionDistance = 10f;
-        [Space]
+        [Space] 
+        public DataFetcher DataFetcher;
         [HideInInspector] public NetDebugAttachment[] NetworkedObjects;
         [HideInInspector] public int[] perBehaviourByteCount;
+        [HideInInspector] public int[] perBehaviourByteCountNoHeaders;
+        [HideInInspector] public int[] perBehaviourByteCountHeadersOnly;
+        [HideInInspector] public int[] perBehaviourByteCountMinHeaders;
+        [HideInInspector] public int[] perBehaviourByteCountMaxHeaders;
         [HideInInspector] public int[] perBehaviourByteCountTotal;
         private int bytesLastSecond;
+        private int bytesLastSecondNoHeaders;
+        private int bytesLastSecondHeadersOnly;
+        private int bytesLastSecondMinHeaders;
+        private int bytesLastSecondMaxHeaders;
+
+        public GameObject LeftWingVisuals;
+        public GameObject RightWingVisuals;
 
         public TextMeshProUGUI MasterText;
 
         public TextMeshProUGUI KBytesOut;
+        public TextMeshProUGUI KBytesOutNoHeaders;
+        public TextMeshProUGUI KBytesOutHeadersOnly;
+        public TextMeshProUGUI KBytesOutMin;
+        public TextMeshProUGUI KBytesOutMax;
         public TextMeshProUGUI NetworkClogged;
+        public TextMeshProUGUI SerialsPerSecText;
+        private int serialsPerSec;
         
         public TextMeshProUGUI lastSerializationsText;
         private string[] lastSerializations = new string[20];
@@ -71,34 +89,48 @@ namespace Centauri.NetDebug
         private DataDictionary tempDict;
         private int currentIndex = 0;
 
+        public BoxCollider CanvasCollider;
+        public RectTransform UICanvas;
+
 
         #region Panel Refreshing
 
         private void Start()
         {
             SendCustomEventDelayedFrames(nameof(InitializeDictionaries), 25);
+            
+            leftWing.localPosition = Vector3.zero;
+            rightWing.localPosition = Vector3.zero;
 
             for (int i = 0; i < NetworkedObjects.Length; i++)
             {
                 NetworkedObjects[i].InitializeScript(); // We'll manually initialize the scripts, cause for some reason they don't fire builtin events like Start!
             }
 
-            _localPlayer = Networking.GetOwner(gameObject);
+            _localPlayer = Networking.LocalPlayer;
 
-            if (NetworkedObjects.Length > 100)
+            if (NetworkedObjects.Length > 400)
             {
                 iterationsPerFrame = 1;
             }
-            else if (NetworkedObjects.Length > 50)
+            else if (NetworkedObjects.Length > 200)
             {
                 iterationsPerFrame = 2;
             }
-            else
+            else if (NetworkedObjects.Length > 100)
             {
                 iterationsPerFrame = 4;
             }
+            else if (NetworkedObjects.Length > 50)
+            {
+                iterationsPerFrame = 8;
+            }
+            else
+            {
+                iterationsPerFrame = 16;
+            }
         }
-
+        
         public void Refresh()
         {
             SendCustomEventDelayedSeconds(nameof(Refresh), 1f, EventTiming.LateUpdate);
@@ -108,16 +140,29 @@ namespace Centauri.NetDebug
             for (var i = 0; i < perBehaviourByteCount.Length; i++)
             {
                 bytesLastSecond += perBehaviourByteCount[i];
-                perBehaviourByteCountTotal[i] += perBehaviourByteCount[i];
             }
+            bytesLastSecondHeadersOnly = 0;
+            bytesLastSecondNoHeaders = 0;
+            bytesLastSecondMinHeaders = 0;
+            bytesLastSecondMaxHeaders = 0;
 
-            if (!Networking.IsOwner(gameObject)) // Ensures object is always owned by the master!
+            if (leftWingOpen || rightWingOpen)
             {
-                if (_localPlayer.isMaster)
+                SerialsPerSecText.text = serialsPerSec.ToString();
+                
+                for (var i = 0; i < perBehaviourByteCountNoHeaders.Length; i++)
                 {
-                    Networking.SetOwner(_localPlayer, gameObject);
+                    bytesLastSecondNoHeaders += perBehaviourByteCountNoHeaders[i];
+                    bytesLastSecondHeadersOnly += perBehaviourByteCountHeadersOnly[i];
+
+                    bytesLastSecondMinHeaders += perBehaviourByteCountMinHeaders[i];
+                    bytesLastSecondMaxHeaders += perBehaviourByteCountMaxHeaders[i];
+
+                    ItemUIs[i].headersLastSecond = perBehaviourByteCountHeadersOnly[i];
                 }
             }
+            
+            serialsPerSec = 0;
             
             UpdateDictionaries();
             ResetArrays();
@@ -125,11 +170,23 @@ namespace Centauri.NetDebug
             if (Vector3.Distance(_localPlayer.GetPosition(), transform.position) > OcclusionDistance)
             {
                 NetworkItemDisplayRoot.gameObject.SetActive(false);
+                LeftWingVisuals.SetActive(false);
+                RightWingVisuals.SetActive(false);
                 return;
             }
             else
             {
                 NetworkItemDisplayRoot.gameObject.SetActive(true);
+                LeftWingVisuals.SetActive(leftWingOpen);
+                RightWingVisuals.SetActive(rightWingOpen);
+            }
+
+            if (!Networking.IsOwner(gameObject))
+            {
+                if (_localPlayer.isMaster)
+                {
+                    Networking.SetOwner(_localPlayer, gameObject);
+                }
             }
             
             MasterText.text = Networking.GetOwner(gameObject).displayName;
@@ -146,17 +203,56 @@ namespace Centauri.NetDebug
             {
                 perBehaviourByteCount[i] = 0;
             }
+
+            for (var i = 0; i < perBehaviourByteCountNoHeaders.Length; i++)
+            {
+                perBehaviourByteCountNoHeaders[i] = 0;
+                perBehaviourByteCountHeadersOnly[i] = 0;
+                perBehaviourByteCountMaxHeaders[i] = 0;
+                perBehaviourByteCountMinHeaders[i] = 0;
+            }
         }
         public void UpdateUI()
         {
             KBytesOut.text = BytesToKilobytes(bytesLastSecond).ToString();
+
+            if (leftWingOpen)
+            {
+                KBytesOutNoHeaders.text = BytesToKilobytes(bytesLastSecondNoHeaders).ToString();
+                KBytesOutHeadersOnly.text = BytesToKilobytes(bytesLastSecondHeadersOnly).ToString();
+                KBytesOutMin.text = BytesToKilobytes(bytesLastSecondMinHeaders).ToString();
+                KBytesOutMax.text = BytesToKilobytes(bytesLastSecondMaxHeaders).ToString();
+            }
+            
             NetworkClogged.text = Networking.IsClogged.ToString();
 
             for (var i = 0; i < sortedDictionaries.Length; i++)
             {
                 if (sortedDictionaries[i].TryGetValue("ui", out DataToken ui))
                 {
-                    ((NetworkItemUI)ui.Reference).transform.SetSiblingIndex(i);
+                    tempItemUI = ((NetworkItemUI)ui.Reference);
+                    tempItemUI.transform.SetSiblingIndex(i);
+                    tempItemUI.IsVisibleInScrollView(ScrollViewRect);
+                    
+                    if (tempItemUI.isVisible)
+                    {
+                        if (!ShowTotal)
+                        {
+                            if (sortedDictionaries[i].TryGetValue("byte", out DataToken value))
+                            {
+                                tempItemUI.UpdateBytesOut(value.Int);
+                                tempItemUI.UpdateOwner(true);
+                            }
+                        }
+                        else
+                        {
+                            if (sortedDictionaries[i].TryGetValue("totalByte", out DataToken value))
+                            {
+                                tempItemUI.UpdateTotalBytes(value.Int);
+                                tempItemUI.UpdateOwner(true);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -188,76 +284,79 @@ namespace Centauri.NetDebug
             SendCustomEventDelayedFrames(nameof(BufferedUpdateUI), 1, EventTiming.LateUpdate);
         }
 
+        private DataDictionary tempDictionary;
+        private NetDebugAttachment tempDebugAttach;
+        private NetworkItemUI tempItemUI;
         public void UpdateNetworkItem(int i)
         {
             if (DataDictionaries.TryGetValue(i, out DataToken token))
             {
-                var dictionary = token.DataDictionary;
-                    
-                if (dictionary.TryGetValue("ntwrkItm", out DataToken item))
+                tempDictionary = token.DataDictionary;
+                
+                if (tempDictionary.TryGetValue("ntwrkItm", out DataToken item))
                 {
-                    if (Networking.IsOwner(((NetDebugAttachment)item.Reference).gameObject))
+                    tempDebugAttach = ((NetDebugAttachment)item.Reference);
+                    tempItemUI = (NetworkItemUI)tempDictionary["ui"].Reference;
+                    
+                    if (Networking.IsOwner(tempDebugAttach.gameObject))
                     {
                         if (!ShowAllItems)
                         {
-                            if (dictionary.TryGetValue("ui", out DataToken ui) && dictionary.TryGetValue("byte", out DataToken bytes))
+                            if (tempDictionary.TryGetValue("byte", out DataToken bytes))
                             {
-                                ((NetworkItemUI)ui.Reference).gameObject.SetActive((int)bytes > 0 && ((NetworkItemUI)ui.Reference).searchVisible);
-                                ((NetworkItemUI)ui.Reference).IsVisibleInScrollView(ScrollViewRect);
+                                tempItemUI.gameObject.SetActive((int)bytes > 0 && tempItemUI.searchVisible);
                             }
                         }
                         else
                         {
-                            if (dictionary.TryGetValue("ui", out DataToken ui))
-                            {
-                                ((NetworkItemUI)ui.Reference).gameObject.SetActive(((NetworkItemUI)ui.Reference).searchVisible);
-                                ((NetworkItemUI)ui.Reference).IsVisibleInScrollView(ScrollViewRect);
-                            }
-                        }
-
-                        if (dictionary.TryGetValue("ui", out DataToken val))
-                        {
-                            if (((NetworkItemUI)val.Reference).isVisible)
-                            {
-                                if (!ShowTotal)
-                                {
-                                    if (dictionary.TryGetValue("byte", out DataToken value))
-                                    {
-                                        ItemUIs[i].UpdateBytesOut(value.Int);
-                                        ItemUIs[i].UpdateOwner(true);
-                                    }
-                                }
-                                else
-                                {
-                                    if (dictionary.TryGetValue("totalByte", out DataToken value))
-                                    {
-                                        ItemUIs[i].UpdateTotalBytes(value.Int);
-                                        ItemUIs[i].UpdateOwner(true);
-                                    }
-                                }
-                            }
+                            tempItemUI.gameObject.SetActive(tempItemUI.searchVisible);
                         }
                     }
                     else
                     {
-                        if (dictionary.TryGetValue("ui", out DataToken ui))
+                        if (tempItemUI.isVisible)
                         {
-                            ((NetworkItemUI)ui.Reference).IsVisibleInScrollView(ScrollViewRect);
-
-                            if (((NetworkItemUI)ui.Reference).isVisible)
+                            if (!ShowRemote)
                             {
-                                if (!ShowRemote)
-                                {
-                                    ((NetworkItemUI)ui.Reference).gameObject.SetActive(false);
-                                }
-                                else
-                                {
-                                    ((NetworkItemUI)ui.Reference).gameObject.SetActive(((NetworkItemUI)ui.Reference).searchVisible);
-                                    ((NetworkItemUI)ui.Reference).UpdateOwner(false);
-                                }
+                                tempItemUI.gameObject.SetActive(false);
+                            }
+                            else
+                            {
+                                tempItemUI.gameObject.SetActive(tempItemUI.searchVisible);
+                                tempItemUI.UpdateOwner(false);
                             }
                         }
                     }
+                }
+            }
+        }
+
+        #endregion
+
+        #region Data Loading
+
+        
+        public void LoadUpdatedData(DataDictionary newData)
+        {
+            int tempMin = 0;
+            int tempMax = 0;
+            
+            for (var i = 0; i < NetworkedObjects.Length; i++)
+            {
+                tempMin = 0;
+                tempMax = 0;
+                
+                if (NetworkedObjects[i].allDataTypes.Length > 0)
+                {
+                    for (int j = 0; j < NetworkedObjects[i].allDataTypes.Length; j++)
+                    {
+                        DataDictionary dataDictionary = newData[NetworkedObjects[i].allDataTypes[j]].DataDictionary;
+                        tempMin += (int)dataDictionary["minByte"].Double;
+                        tempMax += (int)dataDictionary["maxByte"].Double;
+                    }
+                    
+                    ItemUIs[i].minBytes = tempMin;
+                    ItemUIs[i].maxBytes = tempMax;
                 }
             }
         }
@@ -275,6 +374,8 @@ namespace Centauri.NetDebug
                 debugItem["ui"] = ItemUIs[i];
                 debugItem["byte"] = perBehaviourByteCount[i];
                 debugItem["totalByte"] = perBehaviourByteCountTotal[i];
+                debugItem["noVRC"] = perBehaviourByteCountNoHeaders[i];
+                debugItem["VRCOnly"] = perBehaviourByteCountHeadersOnly[i];
 
                 DataDictionaries[NetworkedObjects[i].debugIndex] = debugItem;
 
@@ -282,16 +383,32 @@ namespace Centauri.NetDebug
             }
             
             SendCustomEventDelayedSeconds(nameof(Refresh), 1f, EventTiming.LateUpdate); // We make sure the dictionaries are created before beginning the panel refresh!
+            SendCustomEventDelayedSeconds(nameof(DetailPanelRefresh), 1f, EventTiming.LateUpdate);
         }
 
+        private DataDictionary[] inactiveDictionaries = new DataDictionary[0];
         public void UpdateDictionaries()
         {
+            sortedDictionaries = new DataDictionary[0];
+            inactiveDictionaries = new DataDictionary[0];
+            
             for (int i = 0; i < NetworkedObjects.Length; i++)
             {
                 if(DataDictionaries.TryGetValue(i, out DataToken dictionary))
                 {
                     dictionary.DataDictionary["byte"] = perBehaviourByteCount[i];
                     dictionary.DataDictionary["totalByte"] = perBehaviourByteCountTotal[i];
+                    dictionary.DataDictionary["noVRC"] = perBehaviourByteCountNoHeaders[i];
+                    dictionary.DataDictionary["VRCOnly"] = perBehaviourByteCountHeadersOnly[i];
+
+                    if (perBehaviourByteCount[i] > 0)
+                    {
+                        sortedDictionaries = sortedDictionaries.Add(dictionary.DataDictionary);
+                    }
+                    else
+                    {
+                        inactiveDictionaries = inactiveDictionaries.Add(dictionary.DataDictionary);
+                    }
                 }
             }
         }
@@ -300,33 +417,45 @@ namespace Centauri.NetDebug
         {
             dictLength = sortedDictionaries.Length;
             tempDict = new DataDictionary();
-
-            for (int iter = 0; iter < iterationsPerFrame; iter++)
+            
+            for (int j = 0; j < dictLength; j++)
             {
-                if (currentIndex < dictLength - 1)
+                for (int i = 0; i < dictLength - j - 1; i++)
                 {
-                    for (int i = 0; i < dictLength - currentIndex - 1; i++)
+                    if (sortedDictionaries[i]["byte"].Int < sortedDictionaries[i + 1]["byte"].Int)
                     {
-                        if (sortedDictionaries[i]["byte"].Int < sortedDictionaries[i + 1]["byte"].Int)
-                        {
-                            // Swap the elements
-                            tempDict = sortedDictionaries[i + 1];
-                            sortedDictionaries[i + 1] = sortedDictionaries[i];
-                            sortedDictionaries[i] = tempDict;
-                        }
-
-                        currentIndex++;
+                        tempDict = sortedDictionaries[i + 1];
+                        sortedDictionaries[i + 1] = sortedDictionaries[i];
+                        sortedDictionaries[i] = tempDict;
                     }
+                }
+            }
+
+            DataDictionary[] tempArr = new DataDictionary[sortedDictionaries.Length + inactiveDictionaries.Length];
+            
+            for (int i = 0; i < tempArr.Length; i++)
+            {
+                if (i < sortedDictionaries.Length)
+                {
+                    tempArr[i] = sortedDictionaries[i];
                 }
                 else
                 {
-                    currentIndex = 0;
-                    SendCustomEventDelayedFrames(nameof(UpdateUI), 1, EventTiming.LateUpdate);
-                    return;
+                    tempArr[i] = inactiveDictionaries[i - sortedDictionaries.Length];
+                }
+            }
+
+            sortedDictionaries = tempArr;
+            
+            for (var i = 0; i < sortedDictionaries.Length; i++)
+            {
+                if (sortedDictionaries[i].TryGetValue("ui", out DataToken ui))
+                {
+                    ((NetworkItemUI)ui.Reference).transform.SetSiblingIndex(i);
                 }
             }
             
-            SendCustomEventDelayedFrames(nameof(SortDictionaries), 1, EventTiming.LateUpdate);
+            SendCustomEventDelayedFrames(nameof(UpdateUI), 1, EventTiming.LateUpdate);
         }
 
         #endregion
@@ -365,6 +494,33 @@ namespace Centauri.NetDebug
             }
         }
 
+        public void BeginScroll()
+        {
+            isScrolling = true;
+            
+            Scrolling();
+        }
+
+        private bool isScrolling;
+
+        public void Scrolling()
+        {
+            if (isScrolling)
+            {
+                SendCustomEventDelayedFrames(nameof(Scrolling), 10);
+
+                for (int i = 0; i < ItemUIs.Length; i++)
+                {
+                    ItemUIs[i].IsVisibleInScrollView(ScrollViewRect);
+                }
+            }
+        }
+
+        public void EndScroll()
+        {
+            isScrolling = false;
+        }
+
         public void ToggleShowAllItems()
         {
             ShowAllItems = ShowAllItemsToggle.isOn;
@@ -398,10 +554,34 @@ namespace Centauri.NetDebug
             
             ToggleShowAllItems();
         }
-        
+
+        private int headers;
         public void AddBytes(int index, int bytes)
         {
+            headers = 16;
+            
             perBehaviourByteCount[index] += bytes;
+            perBehaviourByteCountTotal[index] += bytes;
+            
+            bytes -= 16;
+
+            perBehaviourByteCountNoHeaders[index] += ItemUIs[index].minBytes;
+
+            perBehaviourByteCountMaxHeaders[index] += headers + ItemUIs[index].maxBytes;
+            perBehaviourByteCountMinHeaders[index] += headers + ItemUIs[index].minBytes;
+
+            perBehaviourByteCountHeadersOnly[index] += headers + (bytes - ItemUIs[index].minBytes);
+
+            /*
+            if (targetNetworkItem)
+            {
+                if (index == targetNetworkItem.debugIndex)
+                {
+                    Debug.Log($"Adding {bytes + headers} bytes to target behaviour. Total header is 16 + {(bytes - ItemUIs[index].minBytes)}, totaling {headers + ItemUIs[index].minBytes}");
+                }
+            }*/
+                
+            serialsPerSec++;
             
             AddSerializationEntry($"{NetworkedObjects[index].gameObject.name}: {bytes} bytes");
         }
@@ -433,6 +613,9 @@ namespace Centauri.NetDebug
 
         #region Last Serializations
 
+        //private int serializationCount;
+        //private string serializationList;
+        
         public void AddSerializationEntry(string entry)
         {
             if (lastSerializations.Length >= 20)
@@ -440,13 +623,17 @@ namespace Centauri.NetDebug
                 lastSerializations = lastSerializations.RemoveAt(0); // Remove the oldest entry
             }
 
+            //serializationList = string.Concat(serializationCount >= 20 ? serializationList.Substring(serializationList.IndexOf('\n') + 1) : serializationList, "\n", entry);
+
             lastSerializations = lastSerializations.Add(entry); // Add the new entry
+            
             UpdateSerializationDisplay(); // Update the display
         }
 
         // Updates the TextMeshProUGUI with the log entries
         private void UpdateSerializationDisplay()
         {
+            //lastSerializationsText.text = serializationList;
             lastSerializationsText.text = String.Join("\n", lastSerializations); // Join all entries with a newline
         }
 
@@ -458,6 +645,179 @@ namespace Centauri.NetDebug
         {
             float kilobytes = bytes / 1024f;
             return Mathf.Round(kilobytes * 1000f) / 1000f;
+        }
+
+        #endregion
+
+        #region Wing Menus
+
+        public void WingCanvasScaling()
+        {
+            if (leftWingOpen || rightWingOpen)
+            {
+                CanvasCollider.size = new Vector3(2050f, CanvasCollider.size.y, CanvasCollider.size.z);
+                
+                UICanvas.sizeDelta = new Vector2(2050f, UICanvas.sizeDelta.y);
+            }
+            else
+            {
+                CanvasCollider.size = new Vector3(1050f, CanvasCollider.size.y, CanvasCollider.size.z);
+
+                UICanvas.sizeDelta = new Vector2(1050f, UICanvas.sizeDelta.y);
+            }
+        }
+
+        private bool isMovingLeftWing;
+        private bool leftWingOpen;
+        [SerializeField] private RectTransform leftWing;
+        private float leftWingMaxVal = -500;
+        
+        public void ToggleLeftWing()
+        {
+            if (isMovingLeftWing) return;
+            isMovingLeftWing = true;
+            
+            leftWingOpen = !leftWingOpen;
+            
+            LeftWingVisuals.SetActive(leftWingOpen);
+
+            WingCanvasScaling();
+            
+            LeftWingTween();
+        }
+
+        public void LeftWingTween()
+        {
+            if (leftWingOpen)
+            {
+                if (Math.Abs(leftWing.localPosition.x - leftWingMaxVal) > 0.1f)
+                {
+                    leftWing.localPosition = new Vector3(Mathf.Lerp(leftWing.localPosition.x, leftWingMaxVal, Time.deltaTime * 12f), 0f, 0f);
+                    
+                    SendCustomEventDelayedFrames(nameof(LeftWingTween), 1);
+                    return;
+                }
+
+                isMovingLeftWing = false;
+            }
+            else
+            {
+                if (Math.Abs(leftWing.localPosition.x) > 0.1f)
+                {
+                    leftWing.localPosition = new Vector3(Mathf.Lerp(leftWing.localPosition.x, 0, Time.deltaTime * 12f), 0f, 0f);
+                    
+                    SendCustomEventDelayedFrames(nameof(LeftWingTween), 1);
+                    return;
+                }
+
+                isMovingLeftWing = false;
+            }
+        }
+
+        private bool isMovingRightWing;
+        private bool rightWingOpen;
+        [SerializeField] private RectTransform rightWing;
+        private float rightWingMaxVal = 500;
+        
+        public void ToggleRightWing()
+        {
+            if (isMovingRightWing) return;
+            isMovingRightWing = true;
+            
+            rightWingOpen = !rightWingOpen;
+            
+            RightWingVisuals.SetActive(rightWingOpen);
+            
+            WingCanvasScaling();
+            
+            RightWingTween();
+        }
+
+        public void RightWingTween()
+        {
+            if (rightWingOpen)
+            {
+                if (Math.Abs(rightWing.localPosition.x - rightWingMaxVal) > 0.1f)
+                {
+                    rightWing.localPosition = new Vector3(Mathf.Lerp(rightWing.localPosition.x, rightWingMaxVal, Time.deltaTime * 12f), 0f, 0f);
+                    
+                    SendCustomEventDelayedFrames(nameof(RightWingTween), 1);
+                    return;
+                }
+
+                isMovingRightWing = false;
+            }
+            else
+            {
+                if (Math.Abs(rightWing.localPosition.x) > 0.1f)
+                {
+                    rightWing.localPosition = new Vector3(Mathf.Lerp(rightWing.localPosition.x, 0, Time.deltaTime * 12f), 0f, 0f);
+                    
+                    SendCustomEventDelayedFrames(nameof(RightWingTween), 1);
+                    return;
+                }
+
+                isMovingRightWing = false;
+            }
+        }
+
+        #endregion
+
+        #region Panel Details
+
+        [Space(15)] 
+        
+        public TextMeshProUGUI NetworkItemName;
+        public TextMeshProUGUI NetworkItemTotalBytes;
+        public TextMeshProUGUI NetworkItemBPS;
+        public TextMeshProUGUI NetworkItemMinBytes;
+        public TextMeshProUGUI NetworkItemMaxBytes;
+        public TextMeshProUGUI NetworkItemContainsArrsOrStrings;
+        public TextMeshProUGUI NetworkItemTimeSinceLast;
+        public TextMeshProUGUI NetworkItemTimeUdonHeaders;
+
+        private NetworkItemUI targetNetworkItem;
+        public void SetDetailPanel(NetworkItemUI relevantUI)
+        {
+            if (!rightWingOpen)
+            {
+                ToggleRightWing();
+            }
+
+            targetNetworkItem = relevantUI;
+        }
+
+        public void DetailPanelRefresh()
+        {
+            if (!targetNetworkItem)
+            {
+                SendCustomEventDelayedSeconds(nameof(DetailPanelRefresh), 1f);
+                return;
+            }
+
+            if (rightWingOpen)
+            {
+                NetworkItemName.text = targetNetworkItem.objectName;
+            
+                NetworkItemTotalBytes.text = perBehaviourByteCountTotal[targetNetworkItem.debugIndex].ToString();
+            
+                NetworkItemBPS.text = targetNetworkItem.BytesOut.text;
+                NetworkItemMinBytes.text = targetNetworkItem.minBytes.ToString();
+                NetworkItemMaxBytes.text = targetNetworkItem.maxBytes.ToString();
+                NetworkItemContainsArrsOrStrings.text = targetNetworkItem.hasArrsOrStr.ToString();
+                NetworkItemTimeSinceLast.text = targetNetworkItem.timeSinceSync.ToString();
+
+                if (targetNetworkItem.hasArrsOrStr)
+                {
+                    NetworkItemTimeUdonHeaders.text = "Unknown";
+                }
+                else
+                {
+                    NetworkItemTimeUdonHeaders.text = ItemUIs[targetNetworkItem.debugIndex].headersLastSecond.ToString();
+                }
+            }
+            
+            SendCustomEventDelayedFrames(nameof(DetailPanelRefresh), 2);
         }
 
         #endregion
