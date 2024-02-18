@@ -1,0 +1,18 @@
+{
+    "name": "centauricore.networkdebugger.samples",
+    "references": [
+        "UdonSharp.Runtime",
+        "VRC.Udon",
+        "Unity.TextMeshPro",
+        "centauricore.networkdebugger"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
