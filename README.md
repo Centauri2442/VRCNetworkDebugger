@@ -14,6 +14,18 @@
   - Can toggle between showing object and owner name for remote objects
   - Shows send and receive time of network data sent from remote objects
   - Shows when a serialization has failed
+- Wing Panels with extra info
+    Left Panel
+        - Shows total serializations per second
+        - Shows KBytes out, excluding Udon headers
+        - Shows Udon headers in KB
+        - Shows the min and max KBytes out, including Udon headers
+    Right Panel
+        - Shows both total bytes and bytes per second
+        - Displays whether or not the behaviour contains arrays and/or strings (Relevant for header calculations)
+        - Shows the min and max bytes out for the synced data on the behaviour, with max being with headers
+        - Displays time since last serialization
+        - Shows the bytes per second of the Udon header data
 ---
 ## Setup
 
