@@ -10,12 +10,5 @@
     "name": "Centauri",
     "email": "centauri2442@gmail.com"
   },
-  "unity": "2019.4",
-  "samples": [
-    {
-      "displayName": "Demo",
-      "description": "Demo scene with sample assets",
-      "path": "Samples~/Demo"
-    }
-  ]
+  "unity": "2019.4"
 }
