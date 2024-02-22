@@ -29,7 +29,7 @@ namespace Centauri.NetDebug
         public int debugIndex;
         public int MaxHeaders;
         public bool hasArrsOrStrings;
-        public string[] allDataTypes;
+        public string[] allDataTypes = new string[0];
 
         private bool justFiredPostSerialization;
 
