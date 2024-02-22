@@ -11,6 +11,9 @@ SETUP -------------------------------------------------------------
 
 CHANGELOG -------------------------------------------------------------
 
+v1.1.1
+- Fixed occasional null ref issue due to improperly initialized allDataTypes array in NetDebugAttachment.cs
+
 v1.1
 - Added wing panels with extra info
     Left Panel
