@@ -1,5 +1,5 @@
 # VRCNetworkDebugger
-#### Created as an alternative to the broken VRChat networking panels, VRC Network Debugger allows developers to quickly and easily see network usage and other relevant info about the networked udon behaviours in their world!
+#### Created as an alternative to the VRChat networking panels, VRC Network Debugger allows developers to quickly and easily see network usage and other relevant info about the networked udon behaviours in their world!
 ---
 ## Features
 - Master Display
