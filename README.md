@@ -36,6 +36,7 @@
 ---
 ## Limitations
 - Due to performance limitations, it is highly recommended to remove the prefab from the scene when not actively doing network testing! It is also not recommended to turn up the iterations per frame inside the debugger.
+- Does not support persistence player objects due to them being instantiated during runtime.
 
 ---
 ## Requirements
